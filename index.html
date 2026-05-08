@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vardiya Planlayıcı (Pure JS)</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+      html, body { height: 100%; }
+      .thin-scroll::-webkit-scrollbar{width:10px}
+      .thin-scroll::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:999px;border:2px solid #f8fafc}
+      .btn-day { user-select:none; }
+    </style>
+  </head>
+
+  <body class="bg-slate-50">
+    <div id="app"></div>
+
+    <script>
+      // -----------------------------
+      // Storage
+      // -----------------------------
+      const STORAGE_KEY = "work_planner_pure_v2";
+
+      function safeJsonParse(s, fallback) {
+        try { return JSON.parse(s); } catch { return fallback; }
+      }
+      function loadPersisted() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        return safeJsonParse(raw, null);
+      }
+      function savePersisted() {
+        const payload = { team: state.team, tasks: state.tasks };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      }
+      function clearPersisted() { localStorage.removeItem(STORAGE_KEY); }
+
+      // -----------------------------
+      // Days + Availability Model
+      // 0: Pasif, 1: Çalışma, 2: Mesai, 3: Uzatmalı Mesai
+      // -----------------------------
+      const DAYS = [
+        { key: "Pzt", label: "Pzt" },
+        { key: "Sal", label: "Sal" },
+        { key: "Çar", label: "Çar" },
+        { key: "Per", label: "Per" },
+        { key: "Cum", label: "Cum" },
+        { key: "Cmt", label: "Cmt" },
+        { key: "Paz", label: "Paz" },
+      ];
+
+      function defaultAvailability() {
+        const a = {};
+        for (const d of DAYS) a[d.key] = (["Pzt","Sal","Çar","Per","Cum"].includes(d.key) ? 1 : 0);
+        return a;
+      }
+
+      // -----------------------------
+      // Time blocks
+      // -----------------------------
+      const blocks = {
+        normal: [
+          { start: "08:00", end: "11:30", duration: 3.5 },
+          { start: "13:00", end: "16:45", duration: 3.75 },
+        ],
+        overtime: [
+          { start: "08:00", end: "11:30", duration: 3.5 },
+          { start: "13:00", end: "17:45", duration: 4.75 },
+          { start: "18:30", end: "19:30", duration: 1.0 },
+        ],
+        extended: [
+          { start: "08:00", end: "11:30", duration: 3.5 },
+          { start: "13:00", end: "17:45", duration: 4.75 },
+          { start: "18:30", end: "22:30", duration: 4.0 },
+        ],
+      };
+
+      const normalTotal   = blocks.normal.reduce((a,b)=>a+b.duration,0);   // 7.25
+      const overtimeTotal = blocks.overtime.reduce((a,b)=>a+b.duration,0); // 9.25
+      const extendedTotal = blocks.extended.reduce((a,b)=>a+b.duration,0); // 12.25
+
+      function maxLimitForDayStatus(status) {
+        if (status === 1) return normalTotal;
+        if (status === 2) return overtimeTotal;
+        if (status === 3) return extendedTotal;
+        return 0;
+      }
+
+      // -----------------------------
+      // State
+      // -----------------------------
+      const state = {
+        team: [
+          { id: 1, name: "Ahmet", efficiency: 1.0, availability: defaultAvailability() },
+          { id: 2, name: "Ayşe",  efficiency: 1.2, availability: defaultAvailability() },
+        ],
+        tasks: [],
+        isBulkMode: false,
+        bulkText: "",
+        dailySchedule: null,
+        unassignedTasks: [],
+      };
+
+      (function hydrateFromStorage(){
+        const persisted = loadPersisted();
+        if (!persisted) return;
+
+        if (Array.isArray(persisted.team) && persisted.team.length) {
+          state.team = persisted.team
+            .filter(m => m && typeof m.name === "string")
+            .map(m => {
+              const avail = defaultAvailability();
+              if (m.availability && typeof m.availability === "object") {
+                for (const d of DAYS) {
+                  const v = Number(m.availability[d.key]);
+                  if ([0,1,2,3].includes(v)) avail[d.key] = v;
+                }
+              }
+              return {
+                id: m.id ?? Date.now() + Math.random(),
+                name: String(m.name),
+                efficiency: Math.max(0.1, parseFloat(m.efficiency) || 1.0),
+                availability: avail
+              };
+            });
+        }
+        if (Array.isArray(persisted.tasks) && persisted.tasks.length) {
+          state.tasks = persisted.tasks
+            .filter(t => t && typeof t.name === "string")
+            .map(t => ({
+              id: t.id ?? Date.now() + Math.random(),
+              name: String(t.name),
+              duration: Math.max(0.0001, parseFloat(t.duration) || 0),
+            }))
+            .filter(t => t.duration > 0);
+        }
+      })();
+
+      // -----------------------------
+      // Utils
+      // -----------------------------
+      const fmt = (n) => (Number.isFinite(n) ? Number(n).toFixed(1) : "0.0");
+
+      const el = (tag, attrs = {}, children = []) => {
+        const node = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) {
+          if (k === "class") node.className = v;
+          else if (k === "html") node.innerHTML = v;
+          else if (k === "style") node.setAttribute("style", v);
+          else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2).toLowerCase(), v);
+          else if (v === false || v === null || v === undefined) {}
+          else node.setAttribute(k, v);
+        }
+        for (const c of children) node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+        return node;
+      };
+
+      const icon = (name, className="") => el("i", { "data-lucide": name, class: className });
+
+      function resetPlan() {
+        state.dailySchedule = null;
+        state.unassignedTasks = [];
+      }
+
+      function totals() {
+        const totalTaskHours = state.tasks.reduce((a,t)=>a+(t.duration||0),0);
+        let regularCapacity = 0;
+        let maxCapacity = 0;
+
+        for (const m of state.team) {
+          for (const d of DAYS) {
+            const st = m.availability?.[d.key] ?? 0;
+            if (st === 0) continue;
+            regularCapacity += normalTotal;
+            maxCapacity += maxLimitForDayStatus(st);
+          }
+        }
+
+        return { totalTaskHours, regularCapacity, maxCapacity };
+      }
+
+      // -----------------------------
+      // CRUD
+      // -----------------------------
+      function addTeamMember(name, eff) {
+        const n = (name||"").trim();
+        if (!n) return;
+        const e = Math.max(0.1, parseFloat(eff) || 1.0);
+        state.team.push({ id: Date.now(), name: n, efficiency: e, availability: defaultAvailability() });
+        savePersisted();
+      }
+
+      function removeMember(id) {
+        state.team = state.team.filter(m => m.id !== id);
+        savePersisted();
+      }
+
+      function addTask(name, dur) {
+        const n = (name||"").trim();
+        const d = parseFloat(dur);
+        if (!n || !Number.isFinite(d) || d <= 0) return;
+        state.tasks.push({ id: Date.now(), name: n, duration: d });
+        savePersisted();
+      }
+
+      function removeTask(id) {
+        state.tasks = state.tasks.filter(t => t.id !== id);
+        savePersisted();
+      }
+
+      function parseBulkData(text) {
+        const lines = (text || "")
+          .split(/\r?\n/)
+          .map(x => x.trim())
+          .filter(Boolean);
+
+        const parsed = [];
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          let parts = line.split("\t");
+          if (parts.length < 2) parts = line.split(";");
+
+          if (parts.length >= 2) {
+            const name = (parts[0] || "").trim();
+            const raw = (parts[1] || "").trim().replace(",", ".");
+            const dur = parseFloat(raw);
+            if (name && Number.isFinite(dur) && dur > 0) {
+              parsed.push({ id: Date.now() + i, name, duration: dur });
+            }
+          }
+        }
+        if (parsed.length) state.tasks.push(...parsed);
+        savePersisted();
+      }
+
+      // -----------------------------
+      // Availability toggle (0->1->2->3->0)
+      // -----------------------------
+      function cycleAvailability(memberId, dayKey) {
+        const m = state.team.find(x => x.id === memberId);
+        if (!m) return;
+        const cur = Number(m.availability?.[dayKey] ?? 0);
+        const next = (cur + 1) % 4;
+        m.availability[dayKey] = next;
+        savePersisted();
+      }
+
+      // -----------------------------
+      // Scheduling (respects per-person day status)
+      // - Pass0: normal limit (7.25)
+      // - Pass1: person's max limit (depends on status)
+      // - Each day evaluates every person, filters fitting candidates, then picks the best one.
+      // -----------------------------
+      function generateSchedule() {
+        if (!state.team.length || !state.tasks.length) return;
+
+        const scheduleMap = {};
+        for (const d of DAYS) {
+          const dayKey = d.key;
+          scheduleMap[dayKey] = state.team
+            .filter(m => (m.availability?.[dayKey] ?? 0) > 0)
+            .map(m => {
+              const st = m.availability[dayKey];
+              return {
+                ...m,
+                dayKey,
+                dayStatus: st,
+                assignedTasks: [],
+                usedTime: 0,
+                regularLimit: normalTotal,
+                maxLimit: maxLimitForDayStatus(st),
+              };
+            });
+        }
+
+        const sortedTasks = [...state.tasks].sort((a,b)=>b.duration-a.duration);
+        const unassigned = [];
+
+        for (const task of sortedTasks) {
+          let placed = false;
+
+          for (let pass = 0; pass < 2 && !placed; pass++) {
+            for (const d of DAYS) {
+              if (placed) break;
+              const dayKey = d.key;
+              const dayTeam = scheduleMap[dayKey];
+              if (!dayTeam || !dayTeam.length) continue;
+
+              const candidates = dayTeam
+                .map((member, index) => {
+                  const realDuration = task.duration / member.efficiency;
+                  const limit = (pass === 0) ? member.regularLimit : member.maxLimit;
+                  const projectedTime = member.usedTime + realDuration;
+                  const remainingAfter = limit - projectedTime;
+
+                  return {
+                    member,
+                    index,
+                    realDuration,
+                    limit,
+                    projectedTime,
+                    remainingAfter,
+                    isOvertime: projectedTime > member.regularLimit,
+                  };
+                })
+                .filter(candidate => candidate.projectedTime <= candidate.limit);
+
+              if (!candidates.length) continue;
+
+              const best = candidates.sort((a,b) =>
+                a.projectedTime - b.projectedTime ||
+                b.remainingAfter - a.remainingAfter ||
+                b.member.efficiency - a.member.efficiency ||
+                a.member.name.localeCompare(b.member.name, "tr")
+              )[0];
+
+              dayTeam[best.index].assignedTasks.push({
+                ...task,
+                realDuration: best.realDuration,
+                isOvertime: best.isOvertime
+              });
+              dayTeam[best.index].usedTime = best.projectedTime;
+              placed = true;
+            }
+          }
+
+          if (!placed) unassigned.push(task);
+        }
+
+        state.dailySchedule = scheduleMap;
+        state.unassignedTasks = unassigned;
+      }
+
+      // -----------------------------
+      // Excel Export (UTF-16LE TSV) - Turkish safe
+      // -----------------------------
+      function downloadTSV() {
+        if (!state.dailySchedule) generateSchedule();
+
+        const rows = [];
+        rows.push(["Gün","Kişi","İş","Girdi Süre (saat)","Planlanan Süre (saat)","Mesai mi?","Verim","Gün Tipi"]);
+
+        const dayTypeLabel = (st) =>
+          st === 1 ? "Çalışma" : st === 2 ? "Mesai" : st === 3 ? "Uzatmalı Mesai" : "Pasif";
+
+        if (state.dailySchedule) {
+          for (const d of DAYS) {
+            const dayKey = d.key;
+            const dayTeam = state.dailySchedule[dayKey] || [];
+            for (const m of dayTeam) {
+              if (!m.assignedTasks.length) {
+                rows.push([dayKey, m.name, "", "", "", "", m.efficiency, dayTypeLabel(m.dayStatus)]);
+              } else {
+                for (const t of m.assignedTasks) {
+                  rows.push([
+                    dayKey,
+                    m.name,
+                    t.name,
+                    fmt(t.duration),
+                    fmt(t.realDuration),
+                    t.isOvertime ? "Evet" : "Hayır",
+                    m.efficiency,
+                    dayTypeLabel(m.dayStatus),
+                  ]);
+                }
+              }
+            }
+          }
+        }
+
+        if (state.unassignedTasks?.length) {
+          rows.push([]);
+          rows.push(["SIĞMAYAN İŞLER"]);
+          rows.push(["İş","Süre (saat)"]);
+          for (const t of state.unassignedTasks) rows.push([t.name, fmt(t.duration)]);
+        }
+
+        const delimiter = "\t";
+        const text = rows.map(r => r.map(v => String(v ?? "")).join(delimiter)).join("\r\n");
+
+        const buf = new ArrayBuffer((text.length + 1) * 2);
+        const view = new DataView(buf);
+
+        view.setUint16(0, 0xFEFF, true); // BOM UTF-16LE
+        for (let i = 0; i < text.length; i++) {
+          view.setUint16(2 + i * 2, text.charCodeAt(i), true);
+        }
+
+        const blob = new Blob([buf], { type: "text/tab-separated-values;charset=utf-16le" });
+
+        const now = new Date();
+        const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+        const filename = `vardiya_plani_${stamp}.tsv`;
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(a.href);
+          a.remove();
+        }, 0);
+      }
+
+      // -----------------------------
+      // UI helpers for day buttons
+      // -----------------------------
+      function dayBtnStyle(status) {
+        if (status === 0) return "bg-slate-100 text-slate-400 border border-slate-200";
+        if (status === 1) return "bg-indigo-600 text-white border border-indigo-600";
+        if (status === 2) return "bg-orange-500 text-white border border-orange-500";
+        return "bg-rose-600 text-white border border-rose-600";
+      }
+
+      function dayLegend() {
+        return el("div", { class:"flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500" }, [
+          el("span", { class:"flex items-center gap-2" }, [
+            el("span", { class:"w-3 h-3 rounded-md bg-slate-200 inline-block" }), "Pasif"
+          ]),
+          el("span", { class:"flex items-center gap-2" }, [
+            el("span", { class:"w-3 h-3 rounded-md bg-indigo-600 inline-block" }), "1 Tık: Çalışma"
+          ]),
+          el("span", { class:"flex items-center gap-2" }, [
+            el("span", { class:"w-3 h-3 rounded-md bg-orange-500 inline-block" }), "2 Tık: Mesai"
+          ]),
+          el("span", { class:"flex items-center gap-2" }, [
+            el("span", { class:"w-3 h-3 rounded-md bg-rose-600 inline-block" }), "3 Tık: Uzatmalı Mesai"
+          ]),
+        ]);
+      }
+
+      // -----------------------------
+      // Render
+      // -----------------------------
+      const app = document.getElementById("app");
+
+      function render() {
+        const t = totals();
+        app.innerHTML = "";
+
+        const exportBtn = el("button", {
+          class: "bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition shadow-sm",
+          onclick: () => downloadTSV(),
+          title: "Planı Excel uyumlu TSV indir (Türkçe karakter bozulmaz)"
+        }, [
+          el("span", { class: "flex items-center gap-2" }, [
+            icon("download","w-4 h-4"),
+            document.createTextNode(" Excel İndir")
+          ])
+        ]);
+
+        const planBtn = el("button", {
+          class: "bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black hover:bg-indigo-700 transition shadow-lg shadow-indigo-100",
+          onclick: () => { generateSchedule(); render(); }
+        }, ["Planı Oluştur"]);
+
+        const newPlanBtn = el("button", {
+          class: "bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-black transition shadow",
+          onclick: () => { resetPlan(); render(); }
+        }, ["Yeni Plan"]);
+
+        const resetAllBtn = el("button", {
+          class: "bg-white border border-red-200 text-red-600 px-4 py-2.5 rounded-xl font-bold hover:bg-red-50 transition",
+          onclick: () => {
+            if (confirm("Kayıtlı ekip ve iş listesi silinsin mi?")) {
+              clearPersisted();
+              location.reload();
+            }
+          },
+          title: "LocalStorage verilerini temizle"
+        }, [
+          el("span", { class: "flex items-center gap-2" }, [
+            icon("trash-2","w-4 h-4"),
+            document.createTextNode(" Sıfırla")
+          ])
+        ]);
+
+        const header = el("header", {
+          class: "bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4"
+        }, [
+          el("div", {}, [
+            el("h1", { class: "text-2xl font-bold text-indigo-700 flex items-center gap-2" }, [
+              icon("timer","w-7 h-7"),
+              document.createTextNode(" Vardiya Planlayıcı")
+            ]),
+            el("p", { class: "text-slate-500 text-sm" }, [
+              "Personel bazlı gün seçimi (Pasif/Çalışma/Mesai/Uzatmalı)."
+            ])
+          ]),
+          el("div", { class: "flex items-center gap-3 flex-wrap justify-end" }, [
+            el("div", { class: "hidden sm:block text-right" }, [
+              el("div", { class: "text-xs font-bold text-slate-400 uppercase flex items-center justify-end gap-2" }, [
+                icon("clock","w-4 h-4"),
+                document.createTextNode(" Normal / Mesai / Uzatmalı")
+              ]),
+              el("div", { class: "text-lg font-mono text-indigo-600" }, [
+                `${fmt(normalTotal)} / ${fmt(overtimeTotal)} / ${fmt(extendedTotal)} sa/gün`
+              ]),
+              el("div", { class: "text-[11px] text-slate-400" }, [
+                "Zaman blokları: 08:00–11:30 + 13:00–16:45"
+              ]),
+            ]),
+            exportBtn,
+            state.dailySchedule ? newPlanBtn : planBtn,
+            resetAllBtn
+          ])
+        ]);
+
+        const quick = el("section", { class: "grid grid-cols-1 md:grid-cols-3 gap-4" }, [
+          statCard("clipboard-list", "Toplam İş Yükü", `${fmt(t.totalTaskHours)} sa`, "Girilen iş sürelerinin toplamı"),
+          statCard("gauge", "Standart Kapasite (Seçime Göre)", `${fmt(t.regularCapacity)} sa`, "Tüm günlerde çalışma seçili varsayılan kapasite"),
+          statCard("calendar-days", "Maks. Kapasite (Seçime Göre)", `${fmt(t.maxCapacity)} sa`, "Mesai/uzatmalı seçimlerini dahil eder", "text-amber-600", "text-amber-600"),
+        ]);
+
+        const grid = el("div", { class: "grid grid-cols-1 lg:grid-cols-12 gap-6" }, [
+          el("aside", { class:"lg:col-span-4 space-y-4" }, [ teamCard() ]),
+          el("main", { class:"lg:col-span-4 space-y-4" }, [ taskInputCard() ]),
+          el("section", { class:"lg:col-span-4 space-y-4" }, [
+            ...(state.unassignedTasks.length ? [unassignedCard()] : []),
+            state.dailySchedule ? scheduleCard() : emptyPlanCard(),
+            capacityHintCard()
+          ]),
+        ]);
+
+        const footer = el("div", { class:"text-center text-[11px] text-slate-400 pt-2" }, [
+          "Not: Excel indir = UTF-16LE TSV. Türkçe karakter bozulmaz."
+        ]);
+
+        app.appendChild(
+          el("div", { class:"min-h-screen bg-slate-50 text-slate-800 p-4" }, [
+            el("div", { class:"max-w-7xl mx-auto space-y-6" }, [header, quick, grid, footer])
+          ])
+        );
+
+        if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+      }
+
+      function statCard(iconName, title, value, sub, valueClass="text-slate-800", iconClass="text-slate-400") {
+        return el("div", { class: "bg-white rounded-2xl border border-slate-200 p-4 shadow-sm" }, [
+          el("div", { class: `text-xs uppercase tracking-wide font-bold flex items-center gap-2 ${iconClass}` }, [
+            icon(iconName,"w-4 h-4"),
+            document.createTextNode(" " + title)
+          ]),
+          el("div", { class: `mt-2 text-2xl font-black ${valueClass}` }, [value]),
+          el("div", { class: "text-xs text-slate-400" }, [sub]),
+        ]);
+      }
+
+      function teamCard() {
+        const nameInput = el("input", {
+          type: "text",
+          placeholder: "İsim",
+          class: "border rounded-xl p-2 text-sm focus:ring-2 focus:ring-indigo-100 outline-none",
+        });
+
+        const effInput = el("input", {
+          type: "number",
+          step: "0.1",
+          placeholder: "Verim (örn 1.0)",
+          class: "w-full border rounded-xl p-2 text-sm",
+          value: "1.0"
+        });
+
+        const addBtn = el("button", {
+          class: "bg-indigo-600 text-white px-3 rounded-xl hover:bg-indigo-700 transition-colors",
+          title: "Ekle",
+          onclick: () => {
+            addTeamMember(nameInput.value, effInput.value);
+            nameInput.value = "";
+            effInput.value = "1.0";
+            resetPlan();
+            render();
+          }
+        }, [icon("user-plus","w-5 h-5")]);
+
+        const topRow = el("div", { class:"flex items-center gap-2" }, [
+          el("div", { class:"flex-1" }, [nameInput]),
+          el("div", { class:"w-28" }, [effInput]),
+          addBtn
+        ]);
+
+        const tableHead = el("thead", { class:"bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400" }, [
+          el("tr", {}, [
+            el("th", { class:"sticky left-0 z-10 bg-slate-50 px-3 py-2 text-left font-black min-w-[150px]" }, ["İsim"]),
+            ...DAYS.map(d => el("th", { class:"px-2 py-2 text-center font-black min-w-[54px]" }, [d.label]))
+          ])
+        ]);
+
+        const tableBody = el("tbody", { class:"divide-y divide-slate-100" }, []);
+
+        for (const m of state.team) {
+          const initial = (m.name || "?").trim().charAt(0).toUpperCase();
+
+          const dayCells = DAYS.map(d => {
+            const st = m.availability[d.key] ?? 0;
+            return el("td", { class:"px-2 py-3 text-center" }, [
+              el("button", {
+                class: `btn-day w-11 h-9 rounded-2xl text-[11px] font-black shadow-sm ${dayBtnStyle(st)}`,
+                title: "Tıkla: Pasif → Çalışma → Mesai → Uzatmalı",
+                onclick: () => {
+                  cycleAvailability(m.id, d.key);
+                  resetPlan();
+                  render();
+                }
+              }, [d.label])
+            ]);
+          });
+
+          tableBody.appendChild(
+            el("tr", { class:"hover:bg-slate-50/70 transition-colors" }, [
+              el("td", { class:"sticky left-0 z-10 bg-white px-3 py-3 min-w-[150px]" }, [
+                el("div", { class:"flex items-center justify-between gap-2" }, [
+                  el("div", { class:"flex items-center gap-2 min-w-0" }, [
+                    el("div", { class:"w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shrink-0" }, [initial]),
+                    el("div", { class:"min-w-0" }, [
+                      el("div", { class:"font-black text-slate-800 text-sm truncate" }, [m.name]),
+                      el("div", { class:"text-[10px] text-indigo-600 font-bold" }, [
+                        `VERİM: ${String(m.efficiency).replace(".", ",")}`
+                      ])
+                    ])
+                  ]),
+                  el("button", {
+                    class:"text-slate-300 hover:text-red-500 shrink-0",
+                    title:"Sil",
+                    onclick: () => { removeMember(m.id); resetPlan(); render(); }
+                  }, [icon("trash-2","w-4 h-4")])
+                ])
+              ]),
+              ...dayCells
+            ])
+          );
+        }
+
+        const list = el("div", { class:"max-h-[520px] overflow-auto thin-scroll border border-slate-200 rounded-2xl" }, [
+          el("table", { class:"w-full border-collapse text-sm" }, [tableHead, tableBody])
+        ]);
+
+        const blockInfo = el("div", { class:"bg-white border border-slate-200 rounded-2xl p-4 shadow-sm" }, [
+          el("div", { class:"text-xs uppercase tracking-wide font-black text-slate-500 flex items-center gap-2" }, [
+            icon("clock","w-4 h-4"),
+            " Zaman Blokları"
+          ]),
+          el("div", { class:"mt-2 grid grid-cols-1 gap-2 text-xs" }, [
+            el("div", { class:"bg-slate-50 border border-slate-100 rounded-xl p-2 flex justify-between" }, [
+              el("span", { class:"text-slate-600 font-bold" }, ["Normal"]),
+              el("span", { class:"font-mono text-indigo-600 font-black" }, [`${fmt(normalTotal)} sa`]),
+            ]),
+            el("div", { class:"bg-slate-50 border border-slate-100 rounded-xl p-2 flex justify-between" }, [
+              el("span", { class:"text-slate-600 font-bold" }, ["Mesai"]),
+              el("span", { class:"font-mono text-orange-600 font-black" }, [`${fmt(overtimeTotal)} sa`]),
+            ]),
+            el("div", { class:"bg-slate-50 border border-slate-100 rounded-xl p-2 flex justify-between" }, [
+              el("span", { class:"text-slate-600 font-bold" }, ["Uzatmalı Mesai"]),
+              el("span", { class:"font-mono text-rose-600 font-black" }, [`${fmt(extendedTotal)} sa`]),
+            ]),
+          ]),
+          el("div", { class:"mt-3 text-[11px] text-slate-400 leading-relaxed" }, [
+            "Normal: 08:00–11:30 + 13:00–16:45 | Mesai: 13:00–17:45 + 18:30–19:30 | Uzatmalı: 18:30–22:30"
+          ])
+        ]);
+
+        return el("div", { class:"space-y-4" }, [
+          el("div", { class:"bg-white p-5 rounded-2xl border border-slate-200 shadow-sm" }, [
+            el("h2", { class:"font-black text-slate-600 uppercase tracking-wide text-sm flex items-center gap-2" }, [
+              icon("users","w-4 h-4"),
+              " Ekip Üyeleri"
+            ]),
+            el("div", { class:"mt-3" }, [topRow]),
+            el("div", { class:"mt-4 bg-slate-50 border border-slate-100 rounded-2xl p-3" }, [
+              el("div", { class:"text-[10px] uppercase tracking-widest text-slate-400 font-black mb-2" }, [
+                "Çalışma ve Mesai Günleri"
+              ]),
+              dayLegend()
+            ]),
+            el("div", { class:"mt-3" }, [list])
+          ]),
+          blockInfo
+        ]);
+      }
+
+      function taskInputCard() {
+        const btnSingle = el("button", {
+          class: `px-3 py-1 text-xs rounded-lg transition-all ${!state.isBulkMode ? "bg-white shadow-sm font-bold text-indigo-600" : "text-slate-400"}`,
+          onclick: () => { state.isBulkMode = false; render(); }
+        }, ["Tekli"]);
+
+        const btnExcel = el("button", {
+          class: `px-3 py-1 text-xs rounded-lg transition-all ${state.isBulkMode ? "bg-white shadow-sm font-bold text-indigo-600" : "text-slate-400"}`,
+          onclick: () => { state.isBulkMode = true; render(); }
+        }, ["Excel"]);
+        const modeToggle = el("div", { class:"flex bg-slate-100 p-1 rounded-xl" }, [btnSingle, btnExcel]);
+
+        const nameInput = el("input", { type:"text", placeholder:"İş Adı", class:"border rounded-xl p-2.5 text-sm" });
+        const durInput  = el("input", { type:"number", placeholder:"Süre (saat)", class:"border rounded-xl p-2.5 text-sm" });
+
+        const bulkArea = el("textarea", {
+          class:"w-full flex-1 border rounded-xl p-3 text-xs font-mono mb-3 focus:ring-2 focus:ring-indigo-100 outline-none min-h-[220px]",
+          placeholder:"Excel’den yapıştır (örn):\nİş A\t2.5\nİş B\t1,0\n\nAyraç: TAB / ;"
+        });
+        bulkArea.value = state.bulkText;
+
+        const addBtn = el("button", {
+          class:"w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-sm transition-all mb-4",
+          onclick: () => {
+            if (state.isBulkMode) {
+              parseBulkData(bulkArea.value);
+              state.bulkText = "";
+              state.isBulkMode = false;
+            } else {
+              addTask(nameInput.value, durInput.value);
+              nameInput.value = "";
+              durInput.value = "";
+            }
+            resetPlan();
+            render();
+          }
+        }, ["Listeye Ekle"]);
+
+        const list = el("div", { class:"flex-1 overflow-y-auto space-y-2 max-h-[520px] pr-2 thin-scroll" },
+          state.tasks.length === 0
+            ? [el("div", { class:"text-slate-400 text-sm bg-slate-50 border border-slate-100 rounded-xl p-4" },
+                ["Henüz iş eklenmedi. Tekli ekleyin veya Excel’den yapıştırın."])]
+            : state.tasks.map(t =>
+              el("div", { class:"flex justify-between items-center p-2.5 border rounded-xl hover:border-indigo-200 transition-all text-sm group" }, [
+                el("span", { class:"truncate flex-1 font-medium" }, [t.name]),
+                el("div", { class:"flex items-center gap-3 shrink-0" }, [
+                  el("span", { class:"bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-lg font-mono font-bold text-xs" }, [`${fmt(t.duration)}s`]),
+                  el("button", {
+                    class:"text-slate-300 group-hover:text-red-400 transition-colors",
+                    title:"Sil",
+                    onclick: () => { removeTask(t.id); resetPlan(); render(); }
+                  }, [icon("trash-2","w-4 h-4")])
+                ])
+              ])
+            )
+        );
+
+        const planBtn = el("button", {
+          class:"w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-indigo-100 transition-all active:scale-[0.98] uppercase tracking-widest",
+          onclick: () => { generateSchedule(); render(); }
+        }, ["Planı Oluştur"]);
+
+        const clearBtn = el("button", {
+          class:"w-full mt-2 bg-white border border-slate-200 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 py-3",
+          onclick: () => { state.tasks = []; savePersisted(); resetPlan(); render(); }
+        }, ["İş Listesini Temizle"]);
+
+        return el("div", { class:"bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col" }, [
+          el("div", { class:"flex justify-between items-center mb-4" }, [
+            el("h2", { class:"font-black text-slate-600 uppercase tracking-wide text-sm flex items-center gap-2" }, [
+              icon("briefcase","w-4 h-4"),
+              " İş Girişi"
+            ]),
+            modeToggle
+          ]),
+          state.isBulkMode
+            ? bulkArea
+            : el("div", { class:"flex flex-col gap-2 mb-3" }, [nameInput, durInput]),
+          addBtn,
+          list,
+          el("div", { class:"mt-4" }, [planBtn, clearBtn]),
+          el("div", { class:"mt-3 text-[11px] text-slate-400" }, [
+            "Planlama: kapasiteye sığan adayları değerlendirir ve en uygun personele atar. Önce normal kapasiteye kadar, sonra seçilen mesai limitine kadar."
+          ])
+        ]);
+      }
+
+      function unassignedCard() {
+        return el("div", { class:"bg-red-50 border border-red-200 p-4 rounded-2xl" }, [
+          el("h3", { class:"text-red-700 font-bold text-xs mb-2 uppercase flex items-center gap-2" }, [
+            icon("alert-triangle","w-4 h-4"),
+            " Sığmayan İşler"
+          ]),
+          el("div", { class:"flex flex-wrap gap-2" },
+            state.unassignedTasks.map(t =>
+              el("div", { class:"bg-white border border-red-200 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600" },
+                [`${t.name} (${fmt(t.duration)}s)`]
+              )
+            )
+          )
+        ]);
+      }
+
+      function emptyPlanCard() {
+        return el("div", { class:"h-full flex flex-col items-center justify-center bg-white rounded-2xl border-2 border-dashed border-slate-100 min-h-[520px] text-slate-300" }, [
+          icon("bar-chart-3","w-20 h-20 mb-4 opacity-10"),
+          el("p", { class:"font-bold text-sm" }, ["Henüz planlama yapılmadı."]),
+          el("p", { class:"text-xs mt-1" }, ["Solda günleri seç → işleri gir → “Planı Oluştur”"]),
+        ]);
+      }
+
+      function scheduleCard() {
+        const container = el("div", { class:"space-y-4 overflow-y-auto max-h-[720px] pr-2 thin-scroll" }, []);
+
+        const dayTypeLabel = (st) =>
+          st === 1 ? "Çalışma" : st === 2 ? "Mesai" : st === 3 ? "Uzatmalı" : "Pasif";
+
+        for (const d of DAYS) {
+          const dayKey = d.key;
+          const teamToday = state.dailySchedule[dayKey] || [];
+          if (!teamToday.length) continue;
+
+          const box = el("div", { class:"bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm" }, [
+            el("div", { class:"bg-slate-50 p-3 border-b border-slate-100 flex justify-between items-center" }, [
+              el("span", { class:"font-black text-slate-700 text-sm uppercase" }, [dayKey]),
+              el("span", { class:"text-[10px] font-bold text-slate-400" }, ["GÜNLÜK AKIŞ"])
+            ])
+          ]);
+
+          const body = el("div", { class:"p-4 space-y-4" }, []);
+
+          for (const m of teamToday) {
+            const pct = Math.min(100, (m.usedTime / m.maxLimit) * 100);
+            const isOT = m.usedTime > m.regularLimit;
+
+            const pillColor =
+              m.dayStatus === 1 ? "bg-indigo-50 text-indigo-700 border-indigo-100" :
+              m.dayStatus === 2 ? "bg-orange-50 text-orange-700 border-orange-100" :
+              "bg-rose-50 text-rose-700 border-rose-100";
+
+            const row = el("div", { class:"space-y-2" }, [
+              el("div", { class:"flex justify-between items-center" }, [
+                el("div", { class:"text-xs font-bold text-slate-700" }, [m.name]),
+                el("div", { class:"flex items-center gap-2" }, [
+                  el("span", { class:`text-[10px] font-black px-2 py-1 rounded-lg border ${pillColor}` }, [
+                    dayTypeLabel(m.dayStatus)
+                  ]),
+                  el("span", { class: isOT ? "text-amber-600 text-xs font-black" : "text-indigo-600 text-xs font-black" }, [
+                    `${fmt(m.usedTime)} / ${fmt(m.maxLimit)} sa`
+                  ])
+                ])
+              ]),
+              el("div", { class:"w-full bg-slate-100 h-1.5 rounded-full overflow-hidden" }, [
+                el("div", {
+                  class:`h-full rounded-full transition-all duration-700 ${isOT ? "bg-amber-500" : "bg-indigo-500"}`,
+                  style:`width:${pct}%`
+                })
+              ]),
+              el("div", { class:"flex flex-wrap gap-1" }, [
+                ...(m.assignedTasks.length === 0
+                  ? [el("div", { class:"text-[10px] text-slate-400" }, ["İş ataması yok"])]
+                  : m.assignedTasks.map(t =>
+                      el("div", {
+                        class:`text-[9px] px-2 py-1 rounded-md border font-bold ${
+                          t.isOvertime
+                            ? "bg-amber-50 border-amber-100 text-amber-700"
+                            : "bg-slate-50 border-slate-100 text-slate-500"
+                        }`
+                      }, [`${t.name} (${fmt(t.realDuration)}s)`])
+                    )
+                )
+              ])
+            ]);
+
+            body.appendChild(row);
+          }
+
+          box.appendChild(body);
+          container.appendChild(box);
+        }
+
+        return container;
+      }
+
+      function capacityHintCard() {
+        const t = totals();
+        let label = "Kapasite yetmiyor";
+        let pill = "bg-red-50 text-red-700 border-red-100";
+        if (t.totalTaskHours <= t.regularCapacity) {
+          label = "Standart çalışma yeter";
+          pill = "bg-emerald-50 text-emerald-700 border-emerald-100";
+        } else if (t.totalTaskHours <= t.maxCapacity) {
+          label = "Mesai gerekebilir";
+          pill = "bg-amber-50 text-amber-700 border-amber-100";
+        }
+
+        return el("div", { class:"bg-white rounded-2xl border border-slate-200 p-4 shadow-sm" }, [
+          el("div", { class:"flex items-center justify-between" }, [
+            el("div", { class:"text-xs font-bold text-slate-500 uppercase flex items-center gap-2" }, [
+              icon("briefcase","w-4 h-4"),
+              " Kapasite Önerisi"
+            ]),
+            el("span", { class:`text-xs font-black px-2 py-1 rounded-lg border ${pill}` }, [label])
+          ]),
+          el("div", { class:"mt-2 text-[11px] text-slate-400 leading-relaxed" }, [
+            "Gün butonlarını personel bazlı seçerek kapasiteyi yönetebilirsin. Planlama önce normal süreye, sonra seçili mesai limitine kadar kullanır."
+          ])
+        ]);
+      }
+
+      // First paint
+      render();
+    </script>
+  </body>
+</html>
