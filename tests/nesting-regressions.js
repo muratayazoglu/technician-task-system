@@ -27,6 +27,10 @@ function updateValidation() {
 }
 const rectangle=(name,w,h)=>({name,outer:[{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}],holes:[],b:{minX:0,minY:0,maxX:w,maxY:h,w,h},polyArea:w*h,warnings:[]});
 (async()=>{
+ // Import preparation must find the minimum-area whole-degree bounding box and make it the no-rotation baseline.
+ const rawRect=rectangle('pre-rotated',200,40),tilted={...rawRect,outer:rotatedPoly(rawRect.outer,27)};tilted.b=bbox(tilted.outer);const prepared=prepareImportedPart(tilted),preparedVariant=variants(prepared)[0];
+ if(prepared.initialRotation!==63)throw new Error('import pre-rotation did not select the first minimum bbox angle: '+prepared.initialRotation);
+ if(Math.abs(prepared.b.w*prepared.b.h-8000)>.1||Math.abs(preparedVariant.w*preparedVariant.h-8000)>.1)throw new Error('optimized import bbox was not used as nesting baseline');
  // Reusable largest rectangle is not scrap/fire.
  const wm=wasteMetrics(10000,3000,5000);if(Math.abs(wm.net-2000)>.001||Math.abs(wm.ratio-20)>.001)throw new Error('net fire excludes reusable area incorrectly');
  // Global score must strongly reject a detached upper-left/outlier part.
