@@ -49,6 +49,11 @@ const rectangle=(name,w,h)=>({name,outer:[{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h
  state.parts=[rectangle('wide-a',120,80),rectangle('wide-b',100,110),rectangle('wide-c',90,60),rectangle('wide-d',70,95)];await nest();
  if(state.placements.some(p=>Math.abs(p.y-5)>1e-6))throw new Error('bottom alignment left a stray upper part');
  const bottomBox=placementBounds(state.placements,5);if(bottomBox.h>110.001)throw new Error('bottom alignment did not achieve known one-row optimum');
+ // Bottom compaction must rotate a slender upper outlier horizontally when that lowers the occupied height.
+ elements.stockW.value='510';elements.stockH.value='300';elements.margin.value='5';elements.gap.value='5';elements.rot.value='90';elements.mode.value='bottom';
+ state.parts=[rectangle('base-a',150,100),rectangle('base-b',150,100),rectangle('slender',30,180)];const bottomItems=state.parts.map((p,i)=>({p,i,vars:variants(p)})),vertical=bottomItems[2].vars.find(v=>v.h>v.w),basePlaced=[{part:0,x:5,y:5,...bottomItems[0].vars[0],invalid:false},{part:1,x:160,y:5,...bottomItems[1].vars[0],invalid:false},{part:2,x:5,y:110,...vertical,invalid:false}],bottomFixed=compactLayout(basePlaced,bottomItems,510,300,5,5,'bottom',nowMs()+3000);
+ if(placementBounds(bottomFixed,5).h>100.001||bottomFixed.find(p=>p.part===2).h>bottomFixed.find(p=>p.part===2).w)throw new Error('bottom compaction kept a slender detached upper part vertical');
+ await nest();const slenderPlaced=state.placements.find(p=>p.part===2);if(placementBounds(state.placements,5).h>100.001||!slenderPlaced||slenderPlaced.h>slenderPlaced.w)throw new Error('bottom nesting left a slender detached upper part');
  elements.stockW.value='300';elements.stockH.value='500';elements.mode.value='left';await nest();
  if(state.placements.some(p=>Math.abs(p.x-5)>1e-6))throw new Error('left alignment left a stray right-side part');
  const leftBox=placementBounds(state.placements,5);if(leftBox.w>120.001)throw new Error('left alignment did not achieve known one-column optimum');
