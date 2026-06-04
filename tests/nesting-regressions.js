@@ -10,10 +10,10 @@ Object.assign(elements.margin, { value: '5' });
 Object.assign(elements.gap, { value: '5' });
 Object.assign(elements.rot, { value: '90' });
 Object.assign(elements.mode, { value: 'bottomleft' });
-Object.assign(elements.wArea, { value: '1' });
-Object.assign(elements.wEdge, { value: '1' });
-Object.assign(elements.wFree, { value: '.5' });
-Object.assign(elements.wFrag, { value: '.15' });
+Object.assign(elements.wArea, { value: '1.2' });
+Object.assign(elements.wEdge, { value: '1.4' });
+Object.assign(elements.wFree, { value: '.8' });
+Object.assign(elements.wFrag, { value: '.35' });
 global.document = { querySelector: selector => elements[selector.replace('#', '')] };
 
 const assertions = `
@@ -33,6 +33,8 @@ const rectangle=(name,w,h)=>({name,outer:[{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h
  if(Math.abs(prepared.b.w*prepared.b.h-8000)>.1||Math.abs(preparedVariant.w*preparedVariant.h-8000)>.1)throw new Error('optimized import bbox was not used as nesting baseline');
  // Reusable largest rectangle is not scrap/fire.
  const wm=wasteMetrics(10000,3000,5000);if(Math.abs(wm.net-2000)>.001||Math.abs(wm.ratio-20)>.001)throw new Error('net fire excludes reusable area incorrectly');
+ // Completion count is an absolute objective and must beat every visual quality score.
+ const completeCandidate={placed:Array.from({length:4},(_,i)=>({x:i*100,y:200,w:90,h:90})),un:[]},prettyIncomplete={placed:Array.from({length:3},(_,i)=>({x:i*95,y:0,w:90,h:90})),un:[3]};if(!betterLayout(completeCandidate,prettyIncomplete,4,500,500,0,'bottom'))throw new Error('complete layout did not beat prettier incomplete layout');
  // Global score must strongly reject a detached upper-left/outlier part.
  const clustered=[{x:0,y:0,w:40,h:40},{x:45,y:0,w:40,h:40},{x:90,y:0,w:40,h:40}],stray=[{x:0,y:0,w:40,h:40},{x:45,y:0,w:40,h:40},{x:0,y:200,w:40,h:40}];if(layoutScore(clustered,500,300,0,'bottom')>=layoutScore(stray,500,300,0,'bottom'))throw new Error('cluster objective does not penalize detached upper part');
  // Exact 3x2 packing: usable stock is 310x205 and requires the 5 mm clearance to be included in candidate coordinates.

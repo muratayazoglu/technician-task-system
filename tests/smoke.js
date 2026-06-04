@@ -11,10 +11,10 @@ Object.assign(elements.margin, { value: '5' });
 Object.assign(elements.gap, { value: '3' });
 Object.assign(elements.rot, { value: '90' });
 Object.assign(elements.mode, { value: 'bottomleft' });
-Object.assign(elements.wArea, { value: '.6' });
-Object.assign(elements.wEdge, { value: '1' });
-Object.assign(elements.wFree, { value: '.5' });
-Object.assign(elements.wFrag, { value: '.15' });
+Object.assign(elements.wArea, { value: '1.2' });
+Object.assign(elements.wEdge, { value: '1.4' });
+Object.assign(elements.wFree, { value: '.8' });
+Object.assign(elements.wFrag, { value: '.35' });
 global.document = { querySelector: selector => elements[selector.replace('#', '')] };
 
 const assertions = `
