@@ -1,0 +1,221 @@
+<!doctype html>
+<!--
+  SacYer Offline DXF Nesting V1
+  Kullanım: Bu dosyayı çift tıklayıp modern bir tarayıcıda açın. İnternet, kurulum veya sunucu gerekmez.
+  Bir veya daha fazla DXF seçin, stok ölçülerini girin ve “Otomatik yerleştir” düğmesine basın.
+  Not: V1 yerleşimi gerçek dış kontur kesişimi ve minimum kenar mesafesini kullanır; bounding-box yalnızca hızlı ön eleme ve raporlama içindir.
+-->
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SacYer — Offline DXF Nesting</title>
+<style>
+:root{--bg:#0b1220;--panel:#111b2e;--panel2:#17243a;--line:#2d405d;--text:#e8eef8;--muted:#91a4bf;--accent:#36c2a1;--accent2:#58a6ff;--warn:#ffb454;--bad:#ff647c;--good:#65d78e}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;height:100vh;overflow:hidden}button,input,select{font:inherit}.app{height:100vh;display:grid;grid-template-columns:330px 1fr;grid-template-rows:1fr 190px}.sidebar{grid-row:1/3;background:var(--panel);border-right:1px solid var(--line);padding:18px;overflow:auto}.brand{display:flex;align-items:center;gap:11px;margin-bottom:18px}.logo{width:35px;height:35px;border:2px solid var(--accent);border-radius:7px;position:relative}.logo:after{content:"";position:absolute;inset:8px;border:2px dashed var(--accent2)}h1{font-size:18px;margin:0}.sub{color:var(--muted);font-size:11px}.section{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.section h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#b8c8dc;margin:0 0 10px}.field{margin-bottom:10px}.field label{display:block;color:var(--muted);margin-bottom:4px}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:8px}input[type=number],select{width:100%;background:#0d1626;border:1px solid var(--line);border-radius:5px;color:var(--text);padding:7px 8px;outline:none}input:focus,select:focus{border-color:var(--accent2)}input[type=file]{display:none}.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:5px;padding:8px 10px;cursor:pointer;transition:.15s}.btn:hover{border-color:var(--accent2);filter:brightness(1.12)}.btn.primary{width:100%;background:var(--accent);border-color:var(--accent);color:#06251e;font-weight:750;padding:10px}.btnrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.drop{display:block;border:1px dashed #446082;border-radius:7px;padding:14px;text-align:center;cursor:pointer;color:#b9c8dc;background:#0d1626}.drop:hover,.drop.over{border-color:var(--accent);background:#10261f}.files{margin-top:8px;max-height:150px;overflow:auto}.file{display:grid;grid-template-columns:10px 1fr auto;gap:7px;align-items:center;padding:5px 2px;border-bottom:1px solid #1d2b41}.dot{width:8px;height:8px;border-radius:50%}.file small{color:var(--muted)}.x{background:none;border:0;color:var(--muted);cursor:pointer}.check{display:flex;align-items:center;gap:7px;color:var(--muted);margin:7px 0}.advanced summary{cursor:pointer;color:var(--muted)}.canvaswrap{position:relative;overflow:hidden;background:#080e18}.toolbar{position:absolute;z-index:2;top:12px;left:12px;right:12px;display:flex;gap:6px;pointer-events:none}.toolbar .btn,.toolbar .statuspill{pointer-events:auto}.statuspill{margin-left:auto;background:#111b2edd;border:1px solid var(--line);padding:7px 10px;border-radius:5px;color:var(--muted)}canvas{width:100%;height:100%;display:block;cursor:grab}canvas.drag{cursor:grabbing}.hint{position:absolute;bottom:10px;left:12px;color:#768aa6;background:#0b1220c9;padding:4px 7px;border-radius:4px}.reports{grid-column:2;background:var(--panel);border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1.25fr;min-width:0}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-right:1px solid var(--line)}.metric{background:var(--panel);padding:15px}.metric b{display:block;font-size:17px;margin-top:4px}.metric span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}.reportside{padding:12px 15px;overflow:auto}.tabs{display:flex;gap:14px;border-bottom:1px solid var(--line);margin-bottom:8px}.tab{padding:4px 0 7px;color:var(--muted)}.tab.on{color:var(--text);border-bottom:2px solid var(--accent)}table{width:100%;border-collapse:collapse;font-size:11px}th{text-align:left;color:var(--muted);font-weight:500}td,th{padding:3px 6px;border-bottom:1px solid #1b2940}.message{padding:7px 9px;margin:5px 0;border-left:3px solid var(--accent2);background:#16243a}.message.warn{border-color:var(--warn)}.message.bad{border-color:var(--bad)}.progress{height:3px;background:#22314a;margin-top:9px;overflow:hidden}.progress i{display:block;height:100%;background:var(--accent);transition:.2s}.empty{color:var(--muted);padding:8px 0}@media(max-width:850px){body{overflow:auto}.app{height:auto;display:block}.sidebar{border:0}.canvaswrap{height:65vh}.reports{display:block}.metrics{border:0}.reportside{max-height:250px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="logo"></div><div><h1>SacYer</h1><div class="sub">Offline DXF Nesting • V1</div></div></div>
+  <section><h2>1 — Parçalar</h2><label class="drop" id="drop"><b>DXF dosyalarını seçin</b><br><span class="sub">Dosya sınırı yok • sürükleyip bırakabilirsiniz</span><input id="files" type="file" accept=".dxf" multiple></label><div id="fileList" class="files"></div></section>
+  <section class="section"><h2>2 — Stok levha (mm)</h2><div class="twocol"><div class="field"><label>Genişlik</label><input id="stockW" type="number" min="1" value="1000"></div><div class="field"><label>Yükseklik</label><input id="stockH" type="number" min="1" value="600"></div><div class="field"><label>Kenar payı</label><input id="margin" type="number" min="0" value="10"></div><div class="field"><label>Parça boşluğu</label><input id="gap" type="number" min="0" value="5"></div></div></section>
+  <section class="section"><h2>3 — Yerleşim</h2><div class="field"><label>Hizalama / hedef</label><select id="mode"><option value="bottomleft">Sol-alt sıkıştır</option><option value="left">Sol kenara hizala</option><option value="bottom">Alt kenara hizala</option><option value="remainder">En büyük artık alan</option></select></div><div class="field"><label>Döndürme</label><select id="rot"><option value="0">Döndürme yok</option><option value="90" selected>0° / 90°</option><option value="four">0° / 90° / 180° / 270°</option><option value="15">15° açı adımı (gelişmiş)</option><option value="30">30° açı adımı (gelişmiş)</option></select></div><label class="check"><input id="showBoxes" type="checkbox"> Bounding-box'ları göster</label><button class="btn primary" id="nest">Otomatik yerleştir</button><div class="progress"><i id="progress" style="width:0"></i></div></section>
+  <details class="section advanced"><summary>Gelişmiş skor ağırlıkları</summary><div class="twocol" style="margin-top:10px"><div class="field"><label>Kullanılan alan</label><input id="wArea" type="number" step=".1" value="0.6"></div><div class="field"><label>Kenar yakınlığı</label><input id="wEdge" type="number" step=".1" value="1"></div><div class="field"><label>Artık dikdörtgen</label><input id="wFree" type="number" step=".1" value="0.5"></div><div class="field"><label>Parçalanma</label><input id="wFrag" type="number" step=".05" value="0.15"></div></div></details>
+  <section class="section"><h2>4 — Dışa aktar</h2><div class="btnrow"><button class="btn" id="svg">SVG</button><button class="btn" id="dxf">DXF</button><button class="btn" id="csv">CSV</button></div></section>
+</aside>
+<main class="canvaswrap"><div class="toolbar"><button class="btn" id="fit">Ekrana sığdır</button><button class="btn" id="rotate">Seçileni 90° döndür</button><span class="statuspill" id="status">DXF dosyaları bekleniyor</span></div><canvas id="canvas"></canvas><div class="hint">Tekerlek: zoom • boş alanda sürükle: pan • parçayı sürükle: manuel taşı</div></main>
+<section class="reports"><div class="metrics"><div class="metric"><span>Stok alanı</span><b id="mStock">—</b></div><div class="metric"><span>Parça alanı</span><b id="mParts">—</b></div><div class="metric"><span>Net fire (artık hariç)</span><b id="mWaste">—</b></div><div class="metric"><span>Kullanılan bbox</span><b id="mUsed">—</b></div><div class="metric"><span>En büyük artık dikdörtgen</span><b id="mFree">—</b></div><div class="metric"><span>Yerleşen / toplam</span><b id="mPlaced">0 / 0</b></div></div><div class="reportside"><div class="tabs"><span class="tab on">Parça raporu</span><span class="tab">Uyarılar</span></div><div id="messages"></div><div id="report"></div></div></section>
+</div>
+<script>
+'use strict';
+/* ---------------- State and helpers ---------------- */
+const $=s=>document.querySelector(s), TAU=Math.PI*2;
+const state={parts:[],placements:[],unplaced:[],freeRect:null,selected:-1,view:{scale:1,ox:0,oy:0},messages:[]};
+const colors=['#52c7b8','#66a6ff','#d38cf0','#ffb45e','#79d477','#ff7693','#8bd3ff','#e3d45e','#b7a0ff','#59d8ed','#ee8d68','#99ce6b','#d979c7','#58bb92','#eaa85e','#75a5e8'];
+const num=id=>Math.max(0,Number($('#'+id).value)||0), fmt=n=>Number.isFinite(n)?n.toLocaleString('tr-TR',{maximumFractionDigits:1}):'—';
+function msg(text,type=''){state.messages.push({text,type});renderMessages()}
+function renderMessages(){ $('#messages').innerHTML=state.messages.slice(-5).map(m=>`<div class="message ${m.type}">${esc(m.text)}</div>`).join('') }
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function pairs(text){
+ const lines=text.replace(/^\uFEFF/,'').replace(/\r/g,'').split('\n'),out=[];
+ while(lines.length&&lines[0].trim()==='')lines.shift();
+ for(let i=0;i+1<lines.length;i+=2)out.push({c:lines[i].trim(),v:lines[i+1].trim()});
+ return out
+}
+function area(poly){let a=0;for(let i=0,j=poly.length-1;i<poly.length;j=i++)a+=(poly[j].x*poly[i].y-poly[i].x*poly[j].y);return a/2}
+function bbox(poly){let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const p of poly){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y)}return{minX,minY,maxX,maxY,w:maxX-minX,h:maxY-minY}}
+function normContour(poly){const b=bbox(poly);return poly.map(p=>({x:p.x-b.minX,y:p.y-b.minY}))}
+function closeEnough(a,b,t=1e-4){return Math.hypot(a.x-b.x,a.y-b.y)<=t}
+function arcPoints(cx,cy,r,a0,a1,segments=64){while(a1<a0)a1+=360;const n=Math.max(4,Math.ceil(segments*(a1-a0)/360));return Array.from({length:n+1},(_,i)=>{const a=(a0+(a1-a0)*i/n)*Math.PI/180;return{x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)}})}
+function ellipsePoints(cx,cy,mx,my,ratio,a0=0,a1=TAU,segments=72){while(a1<a0)a1+=TAU;const n=Math.max(8,Math.ceil(segments*(a1-a0)/TAU));return Array.from({length:n+1},(_,i)=>{const a=a0+(a1-a0)*i/n;return{x:cx+mx*Math.cos(a)-my*ratio*Math.sin(a),y:cy+my*Math.cos(a)+mx*ratio*Math.sin(a)}})}
+function polyTolerance(points){if(!points.length)return .01;const b=bbox(points),diag=Math.hypot(b.w,b.h);return Math.max(.01,diag*1e-5)}
+function cleanClosed(poly,tol=polyTolerance(poly)){const out=[];for(const p of poly)if(!out.length||!closeEnough(out.at(-1),p,tol/10))out.push(p);if(out.length>2&&closeEnough(out[0],out.at(-1),tol))out.pop();return out}
+function entityPoints(e,xCode=10,yCode=20){const out=[];for(let i=0;i<e.length;i++)if(e[i].c===String(xCode)){let y=0;for(let j=i+1;j<e.length&&e[j].c!==String(xCode);j++)if(e[j].c===String(yCode)){y=Number(e[j].v);break}out.push({x:Number(e[i].v),y})}return out}
+function entityValues(e,code){return e.filter(x=>x.c===String(code)).map(x=>Number(x.v)).filter(Number.isFinite)}
+// Evaluate DXF SPLINE entities as rational B-splines (NURBS) using degree, knot and weight data.
+function splinePoints(e){
+ const value=(code,fallback=0)=>{const item=e.find(x=>x.c===String(code));return item?Number(item.v):fallback};
+ let control=entityPoints(e),degree=Math.max(1,Math.round(value(71,3))),knots=entityValues(e,40),weights=entityValues(e,41);
+ const fit=entityPoints(e,11,21),flags=Math.round(value(70));
+ if(control.length<degree+1){return{points:fit.length>1?fit:control,closed:(flags&3)!==0,exact:false}}
+ degree=Math.min(degree,control.length-1);const n=control.length-1,expected=control.length+degree+1;
+ if(knots.length!==expected||knots.some((v,i)=>i&&v<knots[i-1]))return{points:fit.length>1?fit:control,closed:(flags&3)!==0,exact:false};
+ if(weights.length!==control.length)weights=Array(control.length).fill(1);
+ const start=knots[degree],end=knots[n+1];if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return{points:fit.length>1?fit:control,closed:(flags&3)!==0,exact:false};
+ const evaluate=u=>{
+  let span=n;if(u<end)for(let i=degree;i<=n;i++)if(u>=knots[i]&&u<knots[i+1]){span=i;break}
+  const d=[];for(let j=0;j<=degree;j++){const index=span-degree+j,w=weights[index]||1,p=control[index];d.push({x:p.x*w,y:p.y*w,w})}
+  for(let r=1;r<=degree;r++)for(let j=degree;j>=r;j--){const index=span-degree+j,den=knots[index+degree-r+1]-knots[index],a=Math.abs(den)<1e-14?0:(u-knots[index])/den;d[j]={x:(1-a)*d[j-1].x+a*d[j].x,y:(1-a)*d[j-1].y+a*d[j].y,w:(1-a)*d[j-1].w+a*d[j].w}}
+  const p=d[degree],w=Math.abs(p.w)<1e-14?1:p.w;return{x:p.x/w,y:p.y/w}
+ };
+ const spans=[];for(let i=degree;i<=n;i++)if(knots[i+1]-knots[i]>1e-12)spans.push([knots[i],knots[i+1]]);
+ const points=[];for(const [a,b] of spans){const steps=Math.max(16,Math.min(48,Math.ceil(control.length*3/spans.length)));for(let j=0;j<steps;j++)points.push(evaluate(a+(b-a)*j/steps))}points.push(evaluate(end));
+ return{points,closed:(flags&3)!==0,exact:true}
+}
+
+/* ---------------- Tolerant offline ASCII DXF parser ---------------- */
+const DXFParser={
+ parse(text,name){
+  if(text.startsWith('AutoCAD Binary DXF'))throw new Error('Binary DXF desteklenmiyor; dosyayı ASCII DXF olarak kaydedin.');
+  const ps=pairs(text),contours=[],segments=[],openPaths=[],warnings=[],types={};let splineCount=0,splineFallbacks=0;
+  const addPath=(points,closed=false,fallbackEligible=false)=>{if(points.length<2)return;const tol=polyTolerance(points),isClosed=closed||closeEnough(points[0],points.at(-1),tol);if(isClosed&&points.length>2)contours.push(cleanClosed(points,tol));else{if(fallbackEligible&&points.length>2)openPaths.push(points);for(let n=1;n<points.length;n++)segments.push([points[n-1],points[n]])}};
+  for(let i=0;i<ps.length;i++){
+   if(ps[i].c!=='0')continue;const type=ps[i].v.toUpperCase();types[type]=(types[type]||0)+1;
+   let j=i+1;while(j<ps.length&&ps[j].c!=='0')j++;const e=ps.slice(i+1,j);
+   const one=(c,d=0)=>{const p=e.find(x=>x.c===String(c));return p?Number(p.v):d};
+   if(type==='LWPOLYLINE')addPath(entityPoints(e),(one(70)&1)!==0,true);
+   else if(type==='POLYLINE'){
+    const points=[];let k=j;
+    while(k<ps.length&&!(ps[k].c==='0'&&ps[k].v.toUpperCase()==='SEQEND')){
+     if(ps[k].c==='0'&&ps[k].v.toUpperCase()==='VERTEX'){let q=k+1,ve=[];while(q<ps.length&&ps[q].c!=='0')ve.push(ps[q++]);const vp=entityPoints(ve);if(vp[0])points.push(vp[0]);k=q}else k++
+    }
+    addPath(points,(one(70)&1)!==0,true);
+   }
+   else if(type==='LINE')segments.push([{x:one(10),y:one(20)},{x:one(11),y:one(21)}]);
+   else if(type==='CIRCLE')contours.push(arcPoints(one(10),one(20),Math.abs(one(40)),0,360).slice(0,-1));
+   else if(type==='ARC')addPath(arcPoints(one(10),one(20),Math.abs(one(40)),one(50),one(51)));
+   else if(type==='ELLIPSE'){
+    const full=Math.abs((one(42,TAU)-one(41,0))-TAU)<1e-5||Math.abs(one(42,TAU)-one(41,0))<1e-8;
+    addPath(ellipsePoints(one(10),one(20),one(11),one(21),Math.abs(one(40,1)),one(41,0),one(42,TAU)),full);
+   }
+   else if(type==='SPLINE'){
+    const spline=splinePoints(e);if(spline.points.length>1){addPath(spline.points,spline.closed);splineCount++;if(!spline.exact)splineFallbacks++}
+   }
+   else if(type==='HATCH'){
+    for(let k=0;k<e.length;k++)if(e[k].c==='92'){
+     const flags=Number(e[k].v),polylineBoundary=(flags&2)!==0;let q=k+1;while(q<e.length&&!['92','75','98'].includes(e[q].c))q++;const boundary=e.slice(k+1,q);
+     if(polylineBoundary){const points=entityPoints(boundary);if(points.length>2)addPath(points,boundary.some(x=>x.c==='73'&&Number(x.v)===1),true)}
+     else for(let n=0;n<boundary.length;n++)if(boundary[n].c==='72'){
+      let z=n+1;while(z<boundary.length&&boundary[z].c!=='72')z++;const edge=boundary.slice(n+1,z),edgeType=Number(boundary[n].v),get=(c,d=0)=>{const v=edge.find(x=>x.c===String(c));return v?Number(v.v):d};
+      if(edgeType===1)segments.push([{x:get(10),y:get(20)},{x:get(11),y:get(21)}]);
+      else if(edgeType===2){const ccw=get(73,1)!==0,p=ccw?arcPoints(get(10),get(20),Math.abs(get(40)),get(50),get(51)):arcPoints(get(10),get(20),Math.abs(get(40)),get(51),get(50)).reverse();addPath(p)}
+      else if(edgeType===3)addPath(ellipsePoints(get(10),get(20),get(11),get(21),Math.abs(get(40,1)),get(50,0)*Math.PI/180,get(51,360)*Math.PI/180));
+      else if(edgeType===4){const points=entityPoints(edge,11,21).length>2?entityPoints(edge,11,21):entityPoints(edge);if(points.length>2)addPath(points,get(73)!==0)}n=z-1
+     }
+     k=q-1
+    }
+   }
+   else if(type==='SOLID'||type==='TRACE'||type==='3DFACE'){const points=[10,11,12,13].map((c,n)=>({x:one(c),y:one(20+n)}));addPath(points,true)}
+   i=j-1;
+  }
+  // Join unordered LINE/ARC/ELLIPSE segments. A scale-aware tolerance accepts tiny CAD export rounding gaps.
+  const allPoints=segments.flat(),tol=polyTolerance(allPoints),left=segments.slice();
+  while(left.length){
+   const chain=left.shift().slice();let changed=true;
+   while(changed){changed=false;for(let i=0;i<left.length;i++){const s=left[i];
+    if(closeEnough(chain.at(-1),s[0],tol)){chain.push(s[1]);left.splice(i,1);changed=true;break}
+    if(closeEnough(chain.at(-1),s[1],tol)){chain.push(s[0]);left.splice(i,1);changed=true;break}
+    if(closeEnough(chain[0],s[1],tol)){chain.unshift(s[0]);left.splice(i,1);changed=true;break}
+    if(closeEnough(chain[0],s[0],tol)){chain.unshift(s[1]);left.splice(i,1);changed=true;break}
+   }}
+   if(chain.length>2&&closeEnough(chain[0],chain.at(-1),tol))contours.push(cleanClosed(chain,tol));
+  }
+  if(splineCount)warnings.push(`${name}: ${splineCount} SPLINE, DXF knot/degree/weight verileriyle poligona dönüştürüldü${splineFallbacks?`; ${splineFallbacks} eğride kontrol/fit noktası yedeği kullanıldı`:''}.`);
+  // Some CAD exporters omit the closed bit and final repeated vertex. As a last resort, accept the largest multi-vertex path.
+  if(!contours.length&&openPaths.length){openPaths.sort((a,b)=>Math.abs(area(b))-Math.abs(area(a)));contours.push(cleanClosed(openPaths[0]));warnings.push(`${name}: Polyline kapalı bayrağı içermiyordu; dış kontur son ve ilk nokta birleştirilerek kurtarıldı.`)}
+  if(!contours.length){const seen=Object.entries(types).filter(([t])=>!['SECTION','ENDSEC','EOF','TABLE','ENDTAB'].includes(t)).map(([t,n])=>`${t}×${n}`).join(', ')||'tanınan obje yok';throw new Error(`Kapalı kontur bulunamadı. Algılanan objeler: ${seen}. Dosyayı ASCII DXF olarak ve konturları kapalı polyline şeklinde kaydetmeyi deneyin.`)}
+  contours.sort((a,b)=>Math.abs(area(b))-Math.abs(area(a)));const outer=normContour(contours[0]),ob=bbox(contours[0]);
+  const holes=contours.slice(1).map(c=>c.map(p=>({x:p.x-ob.minX,y:p.y-ob.minY})));return{outer,holes,warnings,b:bbox(outer),polyArea:Math.max(0,Math.abs(area(outer))-holes.reduce((s,h)=>s+Math.abs(area(h)),0))}
+ }
+};
+
+/* ---------------- Geometry, collision, nesting ---------------- */
+const nowMs=()=>typeof performance!=='undefined'&&performance.now?performance.now():Date.now(),NEST_TIME_BUDGET_MS=52000;
+function dims(part,deg){const r=rotatedPoly(part.outer,deg),b=bbox(r);return{w:b.w,h:b.h,poly:r.map(p=>({x:p.x-b.minX,y:p.y-b.minY}))}}
+function rotatedPoly(poly,deg){const a=deg*Math.PI/180,c=Math.cos(a),s=Math.sin(a);return poly.map(p=>({x:p.x*c-p.y*s,y:p.x*s+p.y*c}))}
+function worldPoly(p){return p.poly.map(v=>({x:v.x+p.x,y:v.y+p.y}))}
+function cross(a,b,c){return(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)}
+function pointOnSegment(p,a,b,eps=1e-7){return Math.abs(cross(a,b,p))<=eps&&p.x>=Math.min(a.x,b.x)-eps&&p.x<=Math.max(a.x,b.x)+eps&&p.y>=Math.min(a.y,b.y)-eps&&p.y<=Math.max(a.y,b.y)+eps}
+function pointInPolyStrict(p,poly){for(let i=0,j=poly.length-1;i<poly.length;j=i++)if(pointOnSegment(p,poly[j],poly[i]))return false;let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)inside=!inside}return inside}
+function properIntersect(a,b,c,d,eps=1e-8){const ab1=cross(a,b,c),ab2=cross(a,b,d),cd1=cross(c,d,a),cd2=cross(c,d,b);return ab1*ab2<-eps&&cd1*cd2<-eps}
+function pointSegDistance(p,a,b){const dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy;if(!l2)return Math.hypot(p.x-a.x,p.y-a.y);const t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/l2));return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy)}
+function segDistance(a,b,c,d){if(properIntersect(a,b,c,d))return 0;return Math.min(pointSegDistance(a,c,d),pointSegDistance(b,c,d),pointSegDistance(c,a,b),pointSegDistance(d,a,b))}
+function pointPolyDistance(p,poly){if(pointInPolyStrict(p,poly)||poly.some((v,i)=>pointOnSegment(p,v,poly[(i+1)%poly.length])))return 0;let best=Infinity;for(let i=0;i<poly.length;i++)best=Math.min(best,pointSegDistance(p,poly[i],poly[(i+1)%poly.length]));return best}
+// Limit the collision contour while tracking the maximum chord error as a conservative safety allowance.
+function simplifyForNesting(poly,maxPoints=48){if(poly.length<=maxPoints)return{poly:poly.map(p=>({...p})),error:0};const indices=Array.from({length:maxPoints},(_,i)=>Math.floor(i*poly.length/maxPoints)),out=indices.map(i=>({...poly[i]}));let error=0;for(let k=0;k<indices.length;k++){const from=indices[k],to=indices[(k+1)%indices.length],a=poly[from],b=poly[to];let i=(from+1)%poly.length;while(i!==to){error=Math.max(error,pointSegDistance(poly[i],a,b));i=(i+1)%poly.length}}return{poly:out,error}}
+function sampleVertices(poly,max=12){if(poly.length<=max)return poly;return Array.from({length:max},(_,i)=>poly[Math.floor(i*poly.length/max)])}
+function polygonsConflict(a,b,clearance=0){for(let i=0;i<a.length;i++){const an=a[(i+1)%a.length];for(let j=0;j<b.length;j++){const bn=b[(j+1)%b.length];if(properIntersect(a[i],an,b[j],bn)||clearance>0&&segDistance(a[i],an,b[j],bn)<clearance-1e-6)return true}}const probes=poly=>poly.flatMap((p,i)=>[p,{x:(p.x+poly[(i+1)%poly.length].x)/2,y:(p.y+poly[(i+1)%poly.length].y)/2}]);return probes(a).some(p=>pointInPolyStrict(p,b))||probes(b).some(p=>pointInPolyStrict(p,a))}
+function rectHit(a,b,g=0){return !(a.x+a.w+g<=b.x||b.x+b.w+g<=a.x||a.y+a.h+g<=b.y||b.y+b.h+g<=a.y)}
+function valid(p,placed,W,H,m,g,skip=-1){const poly=worldPoly(p),b=bbox(poly);if(b.minX<m-1e-6||b.minY<m-1e-6||b.maxX>W-m+1e-6||b.maxY>H-m+1e-6)return false;return !placed.some((q,i)=>i!==skip&&rectHit(p,q,g+(p.safety||0)+(q.safety||0))&&polygonsConflict(poly,worldPoly(q),g+(p.safety||0)+(q.safety||0)))}
+function rotations(){const v=$('#rot').value;if(v==='0')return[0];if(v==='90')return[0,90];if(v==='four')return[0,90,180,270];const step=Math.max(1,Number(v)||90);return Array.from({length:Math.ceil(360/step)},(_,i)=>i*step).filter(a=>a<360)}
+function variants(part){const seen=new Map();for(const deg of rotations()){const d=dims(part,deg),simple=simplifyForNesting(d.poly),key=simple.poly.map(p=>`${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(';');if(!seen.has(key))seen.set(key,{...d,poly:simple.poly,safety:simple.error,rotation:deg})}return[...seen.values()]}
+// Prioritize a bounded candidate set. This prevents SPLINE-heavy files from causing combinatorial growth.
+function candidates(placed,W,H,m,g,p,mode,limit=900){const priority=[],detail=[],seen=new Set(),add=(x,y,important=false)=>{if(!Number.isFinite(x)||!Number.isFinite(y)||seen.size>=limit*5)return;const key=`${x.toFixed(4)},${y.toFixed(4)}`;if(!seen.has(key)){seen.add(key);(important?priority:detail).push({x,y})}};add(m,m,true);add(W-m-p.w,m,true);add(m,H-m-p.h,true);const pv=sampleVertices(p.poly);for(const q of placed){const clr=g+(p.safety||0)+(q.safety||0);add(q.x+q.w+clr,q.y,true);add(q.x,q.y+q.h+clr,true);add(q.x+q.w+clr,m,true);add(m,q.y+q.h+clr,true);add(q.x-p.w-clr,q.y,true);add(q.x,q.y-p.h-clr,true);const qv=sampleVertices(worldPoly(q));for(const a of qv)for(const b of pv){add(a.x-b.x,a.y-b.y);if(clr>0){add(a.x+clr-b.x,a.y-b.y);add(a.x-clr-b.x,a.y-b.y);add(a.x-b.x,a.y+clr-b.y);add(a.x-b.x,a.y-clr-b.y)}}}const metric=c=>mode==='left'?c.x:mode==='bottom'?c.y:c.x+c.y;detail.sort((a,b)=>metric(a)-metric(b));return priority.concat(detail.slice(0,Math.max(0,limit-priority.length)))}
+function placementBounds(all,m){if(!all.length)return{maxX:m,maxY:m,w:0,h:0};const maxX=Math.max(...all.map(p=>p.x+p.w)),maxY=Math.max(...all.map(p=>p.y+p.h));return{maxX,maxY,w:maxX-m,h:maxY-m}}
+// Global mode-aware objective. Alignment modes strongly penalize stray pieces on the opposite edge.
+function aabbGap(a,b){const dx=Math.max(0,a.x-(b.x+b.w),b.x-(a.x+a.w)),dy=Math.max(0,a.y-(b.y+b.h),b.y-(a.y+a.h));return Math.hypot(dx,dy)}
+function layoutScore(all,W,H,m,mode){if(!all.length)return 0;const b=placementBounds(all,m),uw=Math.max(1e-9,W-2*m),uh=Math.max(1e-9,H-2*m),diag=Math.hypot(uw,uh),used=b.w*b.h/(uw*uh),avgX=all.reduce((s,p)=>s+p.x-m,0)/(all.length*uw),avgY=all.reduce((s,p)=>s+p.y-m,0)/(all.length*uh),height=b.h/uh,width=b.w/uw,right=Math.max(0,W-m-b.maxX)/uw,top=Math.max(0,H-m-b.maxY)/uh;let cluster=0,outlier=0;if(all.length>1)for(const p of all){let nearest=Infinity;for(const q of all)if(p!==q)nearest=Math.min(nearest,aabbGap(p,q));cluster+=nearest/diag;outlier=Math.max(outlier,nearest/diag)}cluster/=Math.max(1,all.length);let align;if(mode==='bottom')align=14*height+5*avgY+width*.5;else if(mode==='left')align=14*width+5*avgX+height*.5;else if(mode==='bottomleft')align=8*(height+width)+3*(avgX+avgY);else align=5*(height+width)+2*(avgX+avgY);const remainder=Math.max(right,top);return num('wEdge')*align+num('wArea')*used*8+num('wFrag')*(height+width+cluster*12+outlier*25)-num('wFree')*remainder}
+function placementScore(c,placed,W,H,m,mode,strategy=1){if(strategy!==0)return layoutScore(placed.concat(c),W,H,m,mode);const b=placementBounds(placed.concat(c),m),uw=Math.max(1e-9,W-2*m),uh=Math.max(1e-9,H-2*m),usable=uw*uh,nUsed=b.w*b.h/usable,nPerim=(b.w+b.h)/(uw+uh),cx=(c.x-m)/uw,cy=(c.y-m)/uh;let edge=mode==='left'?cx:mode==='bottom'?cy:mode==='bottomleft'?(cy*uw+cx)/(uw+1):cx+cy;const right=Math.max(0,W-m-b.maxX)*uh,top=Math.max(0,H-m-b.maxY)*uw,largest=Math.max(right,top)/usable;if(mode==='remainder')edge=(cx+cy)/2;return num('wEdge')*edge+num('wArea')*nUsed+num('wFrag')*nPerim-num('wFree')*largest}
+function orderStrategies(items,mode){const area=x=>x.p.b.w*x.p.b.h,maxSide=x=>Math.max(x.p.b.w,x.p.b.h),aspect=x=>Math.max(x.p.b.w/x.p.b.h,x.p.b.h/x.p.b.w),sort=fn=>items.slice().sort((a,b)=>fn(b)-fn(a)||area(b)-area(a)||a.i-b.i);const primary=mode==='bottom'?sort(x=>x.p.b.h):mode==='left'?sort(x=>x.p.b.w):sort(area),all=[primary,sort(area),sort(maxSide),sort(aspect)],seen=new Set();return all.filter(order=>{const key=order.map(x=>x.i).join(',');if(seen.has(key))return false;seen.add(key);return true}).slice(0,items.length>24?2:3)}
+function betterLayout(a,b,total,W,H,m,mode){if(!b)return true;if(a.placed.length!==b.placed.length)return a.placed.length>b.placed.length;return layoutScore(a.placed,W,H,m,mode)<layoutScore(b.placed,W,H,m,mode)-1e-9}
+function runTrial(order,W,H,m,g,mode,deadline,candidateLimit,variantBias=0){const placed=[],un=[];for(let si=0;si<order.length;si++){if(nowMs()>deadline){un.push(...order.slice(si).map(x=>x.i));return{placed,un,timedOut:true}}const {i,vars}=order[si];let best=null;variantLoop:for(const v of vars){if(v.w>W-2*m+1e-6||v.h>H-2*m+1e-6)continue;for(const xy of candidates(placed,W,H,m,g,v,mode,candidateLimit)){if(nowMs()>deadline){un.push(i,...order.slice(si+1).map(x=>x.i));return{placed,un,timedOut:true}}const c={part:i,x:xy.x,y:xy.y,w:v.w,h:v.h,poly:v.poly,safety:v.safety,rotation:v.rotation,invalid:false};if(!valid(c,placed,W,H,m,g))continue;const bias=variantBias===1?v.w/Math.max(1,W-2*m):variantBias===2?v.h/Math.max(1,H-2*m):0,sc=placementScore(c,placed,W,H,m,mode,variantBias)+bias*20;if(!best||sc<best.sc-1e-12||(Math.abs(sc-best.sc)<1e-12&&(c.y<best.y||c.y===best.y&&c.x<best.x)))best={...c,sc}}}if(best)placed.push(best);else un.push(i)}return{placed,un,timedOut:false}}
+// One local compaction pass moves each part to a better candidate without changing its selected rotation.
+function bestItemPlacement(item,placed,W,H,m,g,mode,deadline,limit=700){let best=null;for(const v of item.vars){for(const xy of candidates(placed,W,H,m,g,v,mode,limit)){if(nowMs()>deadline)return best;const c={part:item.i,x:xy.x,y:xy.y,w:v.w,h:v.h,poly:v.poly,safety:v.safety,rotation:v.rotation,invalid:false};if(!valid(c,placed,W,H,m,g))continue;const score=layoutScore(placed.concat(c),W,H,m,mode);if(!best||score<best.score)best={...c,score}}}return best}
+function rescueLayout(result,items,W,H,m,g,mode,deadline){let placed=result.placed.map(p=>({...p})),un=[...result.un];for(let u=0;u<un.length&&nowMs()<deadline;){const item=items.find(x=>x.i===un[u]),direct=bestItemPlacement(item,placed,W,H,m,g,mode,deadline,1000);if(direct){placed.push(direct);un.splice(u,1);continue}let rescued=null;const victims=placed.slice().sort((a,b)=>aabbGap(b,{x:m,y:m,w:0,h:0})-aabbGap(a,{x:m,y:m,w:0,h:0}));for(const victim of victims){if(nowMs()>deadline)break;const base=placed.filter(p=>p!==victim),first=bestItemPlacement(item,base,W,H,m,g,mode,deadline,550);if(!first)continue;const victimItem=items.find(x=>x.i===victim.part),second=bestItemPlacement(victimItem,base.concat(first),W,H,m,g,mode,deadline,550);if(second){rescued=base.concat(first,second);break}}if(rescued){placed=rescued;un.splice(u,1)}else u++}return{placed,un,timedOut:nowMs()>deadline}}
+function compactLayout(placed,W,H,m,g,mode,deadline){let result=placed.map(p=>({...p}));for(let pass=0;pass<3&&nowMs()<deadline;pass++){let changed=false;const sequence=result.slice().sort((a,b)=>{const da=mode==='left'?a.x:a.y,db=mode==='left'?b.x:b.y;return db-da||aabbGap(b,{x:m,y:m,w:0,h:0})-aabbGap(a,{x:m,y:m,w:0,h:0})});for(const item of sequence){if(nowMs()>deadline)break;const index=result.findIndex(p=>p.part===item.part),others=result.filter((_,i)=>i!==index),variant={w:item.w,h:item.h,poly:item.poly,safety:item.safety};let best=result[index],bestScore=layoutScore(result,W,H,m,mode);for(const xy of candidates(others,W,H,m,g,variant,mode,360)){const c={...item,x:xy.x,y:xy.y};if(!valid(c,others,W,H,m,g))continue;const score=layoutScore(others.concat(c),W,H,m,mode);if(score<bestScore-1e-8){best=c;bestScore=score}}if(best.x!==result[index].x||best.y!==result[index].y)changed=true;result[index]=best}if(!changed)break}return result}
+async function nest(){
+ if(!state.parts.length){msg('Yerleşim için en az bir DXF parçası yükleyin.','warn');return}
+ state.messages=[];const started=nowMs(),deadline=started+NEST_TIME_BUDGET_MS,W=num('stockW'),H=num('stockH'),m=num('margin'),g=num('gap'),mode=$('#mode').value;$('#status').textContent='Çoklu başlangıçlı yerleşim hesaplanıyor…';if(W<=2*m||H<=2*m){msg('Margin sonrası kullanılabilir stok alanı kalmıyor.','bad');return}
+ const items=state.parts.map((p,i)=>({p,i,vars:variants(p)})),orders=orderStrategies(items,mode);while(orders.length<Math.min(3,Math.max(1,items.length)))orders.push(orders[orders.length%Math.max(1,orders.length)].slice());let best=null,timedOut=false;
+ for(let t=0;t<orders.length;t++){const remaining=deadline-nowMs(),trialsLeft=orders.length-t,trialDeadline=Math.min(deadline,nowMs()+Math.max(1500,remaining/trialsLeft)),result=runTrial(orders[t],W,H,m,g,mode,trialDeadline,t===0?(state.parts.length>32?500:900):(state.parts.length>32?280:480),t%3);timedOut||=result.timedOut;if(betterLayout(result,best,state.parts.length,W,H,m,mode))best=result;$('#progress').style.width=`${(t+1)/orders.length*85}%`;await new Promise(r=>setTimeout(r,0));if(nowMs()>deadline-2500)break}
+ if(best&&best.un.length&&nowMs()<deadline-3500)best=rescueLayout(best,items,W,H,m,g,mode,deadline-2200);if(best&&nowMs()<deadline-900)best.placed=compactLayout(best.placed,W,H,m,g,mode,deadline-500);
+ state.placements=best?.placed||[];state.unplaced=[...new Set(best?.un||items.map(x=>x.i))];state.freeRect=estimateFreeRect(1800);if(timedOut)msg(`Süre bütçesi içinde bulunan en iyi yerleşim gösteriliyor.`,'warn');else if(state.unplaced.length)msg(`Sığmayan parçalar: ${state.unplaced.map(i=>state.parts[i].name).join(', ')}`,'bad');else msg(`${orders.length} başlangıç karşılaştırıldı; tüm parçalar ${(nowMs()-started).toFixed(0)} ms içinde yerleştirildi.`);updateValidation(false);fitView();updateReport();$('#status').textContent=`${state.placements.length}/${state.parts.length} parça • ${((nowMs()-started)/1000).toFixed(1)} sn`;setTimeout(()=>$('#progress').style.width='0',600)
+}
+// Rasterize only each polygon's local grid range; stop at the estimator budget and keep the best conservative result.
+function estimateFreeRect(budgetMs=2500){const started=nowMs(),W=num('stockW'),H=num('stockH'),m=num('margin'),g=num('gap'),cols=100,rows=Math.max(20,Math.round(100*(H-2*m)/Math.max(1,W-2*m))),cw=(W-2*m)/cols,ch=(H-2*m)/rows;if(cw<=0||ch<=0)return null;const grid=Array.from({length:rows},()=>new Uint8Array(cols)),radius=Math.hypot(cw,ch)/2;for(const placement of state.placements){const poly=worldPoly(placement),b=bbox(poly),pad=g+(placement.safety||0)+radius,x0=Math.max(0,Math.floor((b.minX-pad-m)/cw)),x1=Math.min(cols-1,Math.ceil((b.maxX+pad-m)/cw)),y0=Math.max(0,Math.floor((b.minY-pad-m)/ch)),y1=Math.min(rows-1,Math.ceil((b.maxY+pad-m)/ch));for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){if(nowMs()-started>budgetMs)break;const c={x:m+(x+.5)*cw,y:m+(y+.5)*ch};if(pointPolyDistance(c,poly)<=pad)grid[y][x]=1}}let heights=Array(cols).fill(0),best={area:0,x:m,y:m,w:0,h:0};for(let y=0;y<rows;y++){for(let x=0;x<cols;x++)heights[x]=grid[y][x]?0:heights[x]+1;const st=[];for(let x=0;x<=cols;x++){const h=x===cols?0:heights[x];let start=x;while(st.length&&st.at(-1).h>h){const bar=st.pop(),ww=x-bar.start,a=ww*bar.h*cw*ch;start=bar.start;if(a>best.area)best={area:a,x:m+bar.start*cw,y:m+(y-bar.h+1)*ch,w:ww*cw,h:bar.h*ch}}if(h>0&&(!st.length||st.at(-1).h<h))st.push({start,h})}}return best}
+function updateValidation(recomputeFree=true){const W=num('stockW'),H=num('stockH'),m=num('margin'),g=num('gap');state.placements.forEach((p,i)=>p.invalid=!valid(p,state.placements,W,H,m,g,i));if(recomputeFree)state.freeRect=estimateFreeRect();render();updateReport()}
+function wasteMetrics(stock,placed,reusable){const net=Math.max(0,stock-placed-Math.max(0,reusable||0));return{net,ratio:stock?100*net/stock:0}}
+
+/* ---------------- Canvas renderer and manual interaction ---------------- */
+const canvas=$('#canvas'),ctx=canvas.getContext('2d');let dpr=1,drag=null;
+function resize(){dpr=devicePixelRatio||1;const r=canvas.getBoundingClientRect();canvas.width=r.width*dpr;canvas.height=r.height*dpr;render()}addEventListener('resize',resize);
+function worldToScreen(p){return{x:state.view.ox+p.x*state.view.scale,y:state.view.oy-p.y*state.view.scale}}
+function screenToWorld(p){return{x:(p.x-state.view.ox)/state.view.scale,y:(state.view.oy-p.y)/state.view.scale}}
+function fitView(){const r=canvas.getBoundingClientRect(),W=num('stockW'),H=num('stockH');state.view.scale=Math.max(.01,Math.min((r.width-80)/W,(r.height-80)/H));state.view.ox=(r.width-W*state.view.scale)/2;state.view.oy=(r.height+H*state.view.scale)/2;render()}
+function placedPoly(poly,outer,x,y,deg){const rp=rotatedPoly(poly,deg),ob=bbox(rotatedPoly(outer,deg));return rp.map(v=>({x:x+v.x-ob.minX,y:y+v.y-ob.minY}))}
+function pathPoly(poly,outer,x,y,deg){ctx.beginPath();placedPoly(poly,outer,x,y,deg).forEach((v,i)=>{const s=worldToScreen(v);i?ctx.lineTo(s.x,s.y):ctx.moveTo(s.x,s.y)});ctx.closePath()}
+function render(){const r=canvas.getBoundingClientRect();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,r.width,r.height);const W=num('stockW'),H=num('stockH'),m=num('margin');let a=worldToScreen({x:0,y:H}),b=worldToScreen({x:W,y:0});ctx.fillStyle='#111b2e';ctx.fillRect(a.x,a.y,b.x-a.x,b.y-a.y);ctx.strokeStyle='#5f789a';ctx.lineWidth=2;ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);a=worldToScreen({x:m,y:H-m});b=worldToScreen({x:W-m,y:m});ctx.strokeStyle='#344b69';ctx.setLineDash([5,4]);ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);ctx.setLineDash([]);
+ if(state.freeRect&&state.freeRect.area){const f=state.freeRect;a=worldToScreen({x:f.x,y:f.y+f.h});ctx.fillStyle='#49d49b18';ctx.strokeStyle='#49d49b';ctx.setLineDash([7,5]);ctx.fillRect(a.x,a.y,f.w*state.view.scale,f.h*state.view.scale);ctx.strokeRect(a.x,a.y,f.w*state.view.scale,f.h*state.view.scale);ctx.setLineDash([])}
+ state.placements.forEach((p,i)=>{const part=state.parts[p.part];pathPoly(part.outer,part.outer,p.x,p.y,p.rotation);ctx.fillStyle=p.invalid?'#ff647c66':colors[p.part%colors.length]+'88';ctx.strokeStyle=p.invalid?'#ff647c':colors[p.part%colors.length];ctx.lineWidth=i===state.selected?3:1.5;ctx.fill();ctx.stroke();for(const h of part.holes){pathPoly(h,part.outer,p.x,p.y,p.rotation);ctx.fillStyle='#111b2e';ctx.fill();ctx.stroke()}if($('#showBoxes').checked){a=worldToScreen({x:p.x,y:p.y+p.h});ctx.strokeStyle='#91a4bf88';ctx.setLineDash([3,3]);ctx.strokeRect(a.x,a.y,p.w*state.view.scale,p.h*state.view.scale);ctx.setLineDash([])}const t=worldToScreen({x:p.x+2/state.view.scale,y:p.y+p.h-5/state.view.scale});ctx.fillStyle='#f3f7fc';ctx.font='11px system-ui';ctx.fillText(part.name,t.x,t.y)});}
+function hitPart(w){for(let i=state.placements.length-1;i>=0;i--){const p=state.placements[i];if(w.x>=p.x&&w.x<=p.x+p.w&&w.y>=p.y&&w.y<=p.y+p.h)return i}return-1}
+canvas.addEventListener('mousedown',e=>{const w=screenToWorld({x:e.offsetX,y:e.offsetY}),i=hitPart(w);state.selected=i;if(i>=0)drag={type:'part',i,dx:w.x-state.placements[i].x,dy:w.y-state.placements[i].y};else drag={type:'pan',x:e.clientX,y:e.clientY,ox:state.view.ox,oy:state.view.oy};canvas.classList.add('drag');render()});
+addEventListener('mousemove',e=>{if(!drag)return;if(drag.type==='pan'){state.view.ox=drag.ox+e.clientX-drag.x;state.view.oy=drag.oy+e.clientY-drag.y;render()}else{const r=canvas.getBoundingClientRect(),w=screenToWorld({x:e.clientX-r.left,y:e.clientY-r.top}),p=state.placements[drag.i];p.x=w.x-drag.dx;p.y=w.y-drag.dy;updateValidation(false)}});addEventListener('mouseup',()=>{if(drag?.type==='part'){updateValidation(true);if(state.placements[drag.i]?.invalid)msg('Manuel taşıma geçersiz yerleşim oluşturdu.','bad')}drag=null;canvas.classList.remove('drag')});
+canvas.addEventListener('wheel',e=>{e.preventDefault();const before=screenToWorld({x:e.offsetX,y:e.offsetY}),factor=e.deltaY<0?1.12:.89;state.view.scale=Math.max(.02,Math.min(30,state.view.scale*factor));const after=worldToScreen(before);state.view.ox+=e.offsetX-after.x;state.view.oy+=e.offsetY-after.y;render()},{passive:false});
+
+/* ---------------- Reports and exporters ---------------- */
+function updateReport(){const W=num('stockW'),H=num('stockH'),stock=W*H,pa=state.parts.reduce((s,p)=>s+p.polyArea,0),placedArea=state.placements.reduce((s,p)=>s+state.parts[p.part].polyArea,0),waste=wasteMetrics(stock,placedArea,state.freeRect?.area||0);let used=0;if(state.placements.length){const minX=Math.min(...state.placements.map(p=>p.x)),minY=Math.min(...state.placements.map(p=>p.y)),maxX=Math.max(...state.placements.map(p=>p.x+p.w)),maxY=Math.max(...state.placements.map(p=>p.y+p.h));used=(maxX-minX)*(maxY-minY)}$('#mStock').textContent=fmt(stock)+' mm²';$('#mParts').textContent=fmt(pa)+' mm²';$('#mWaste').textContent=stock?fmt(waste.ratio)+'%':'—';$('#mUsed').textContent=fmt(used)+' mm²';$('#mFree').textContent=fmt(state.freeRect?.area||0)+' mm²';$('#mPlaced').textContent=`${state.placements.length} / ${state.parts.length}`;$('#report').innerHTML=state.placements.length?`<table><thead><tr><th>Parça</th><th>X</th><th>Y</th><th>Açı</th><th>W × H</th><th>Durum</th></tr></thead><tbody>${state.placements.map(p=>`<tr><td>${esc(state.parts[p.part].name)}</td><td>${fmt(p.x)}</td><td>${fmt(p.y)}</td><td>${p.rotation}°</td><td>${fmt(p.w)} × ${fmt(p.h)}</td><td style="color:${p.invalid?'var(--bad)':'var(--good)'}">${p.invalid?'Geçersiz':'Uygun'}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Yerleşim sonrası koordinatlar burada görünür.</div>'}
+function download(name,type,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function transformed(poly,p,outer){return placedPoly(poly,outer,p.x,p.y,p.rotation)}
+function exportSVG(){const W=num('stockW'),H=num('stockH'),paths=state.placements.map(p=>{const part=state.parts[p.part],all=[part.outer,...part.holes].map(poly=>transformed(poly,p,part.outer).map((v,i)=>(i?'L':'M')+v.x.toFixed(3)+' '+(H-v.y).toFixed(3)).join(' ')+' Z').join(' ');return`<path d="${all}" fill="${colors[p.part%colors.length]}55" stroke="${colors[p.part%colors.length]}" fill-rule="evenodd"><title>${esc(part.name)}</title></path>`}).join('\n');download('sacyer-yerlesim.svg','image/svg+xml',`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="white" stroke="black"/>${paths}</svg>`)}
+function exportDXF(){let out='0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n';for(const p of state.placements){const part=state.parts[p.part];for(const poly of [part.outer,...part.holes]){const t=transformed(poly,p,part.outer);out+=`0\nLWPOLYLINE\n8\n${part.name.replace(/[^\w.-]/g,'_')}\n90\n${t.length}\n70\n1\n`;for(const v of t)out+=`10\n${v.x.toFixed(4)}\n20\n${v.y.toFixed(4)}\n`}}out+='0\nENDSEC\n0\nEOF\n';download('sacyer-yerlesim.dxf','application/dxf',out)}
+function exportCSV(){let s='Parca,X,Y,Donme,BBox Genislik,BBox Yukseklik,Alan,Durum\n';for(const p of state.placements)s+=`"${state.parts[p.part].name}",${p.x},${p.y},${p.rotation},${p.w},${p.h},${state.parts[p.part].polyArea},${p.invalid?'Gecersiz':'Uygun'}\n`;download('sacyer-rapor.csv','text/csv;charset=utf-8','\ufeff'+s)}
+
+/* ---------------- UI and embedded sample parts ---------------- */
+async function loadFiles(files){for(const f of files){try{const d=DXFParser.parse(await f.text(),f.name);state.parts.push({name:f.name,...d,color:colors[state.parts.length%colors.length]});d.warnings.forEach(w=>msg(w,'warn'))}catch(e){msg(`${f.name}: ${e.message}`,'bad')}}refreshFiles();updateReport();render();$('#status').textContent=`${state.parts.length} parça yüklendi`}
+function refreshFiles(){$('#fileList').innerHTML=state.parts.map((p,i)=>`<div class="file"><i class="dot" style="background:${colors[i%colors.length]}"></i><span>${esc(p.name)}<br><small>${fmt(p.b.w)} × ${fmt(p.b.h)} mm</small></span><button class="x" data-i="${i}">×</button></div>`).join('');document.querySelectorAll('.x').forEach(x=>x.onclick=()=>{state.parts.splice(Number(x.dataset.i),1);state.placements=[];refreshFiles();updateReport();render()})}
+$('#files').onchange=e=>loadFiles([...e.target.files]);const drop=$('#drop');drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};drop.ondragleave=()=>drop.classList.remove('over');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');loadFiles([...e.dataTransfer.files].filter(f=>f.name.toLowerCase().endsWith('.dxf')))};
+$('#nest').onclick=nest;$('#fit').onclick=fitView;$('#showBoxes').onchange=render;$('#svg').onclick=exportSVG;$('#dxf').onclick=exportDXF;$('#csv').onclick=exportCSV;$('#rotate').onclick=()=>{const p=state.placements[state.selected];if(!p){msg('Önce bir parça seçin.','warn');return}p.rotation=(p.rotation+90)%360;const d=dims(state.parts[p.part],p.rotation);p.w=d.w;p.h=d.h;const simple=simplifyForNesting(d.poly);p.poly=simple.poly;p.safety=simple.error;updateValidation()};['stockW','stockH','margin','gap'].forEach(id=>$('#'+id).onchange=()=>{updateValidation();fitView()});
+resize();fitView();updateReport();
+</script>
+</body></html>
